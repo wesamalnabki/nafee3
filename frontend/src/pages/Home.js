@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { searchProfiles } from "../services/api";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../services/auth";
 
 function Home() {
   const [query, setQuery] = useState("");
@@ -47,6 +48,14 @@ function Home() {
       return;
     }
     navigate(`/worker/${profileId}`);
+  };
+
+  const getImageUrl = (path) => {
+    if (!path) return null;
+    const { data } = supabase.storage
+      .from('profile-photos')
+      .getPublicUrl(path);
+    return data.publicUrl;
   };
 
   return (
@@ -133,86 +142,125 @@ function Home() {
                 backgroundColor: "white",
                 borderRadius: "8px",
                 marginBottom: "1rem",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                display: "flex",
+                gap: "1.5rem"
               }}
             >
-              <h2 
-                onClick={() => {
-                  console.log('Profile clicked:', profile); // Debug log
-                  handleProfileClick(profile.profile_id);
-                }}
-                style={{ 
-                  margin: "0 0 0.5rem 0",
-                  color: "#1a0dab",
-                  fontSize: "1.2rem",
-                  cursor: "pointer",
-                  textDecoration: "underline"
-                }}
-              >
-                {profile.full_name}
-              </h2>
-
-              <p style={{ 
-                color: "#4d5156",
-                marginBottom: "1rem",
-                fontSize: "1rem",
-                lineHeight: "1.5"
-              }}>
-                {profile.service_description}
-              </p>
-
-              <div style={{
-                display: "flex",
-                gap: "1rem",
-                alignItems: "center",
-                color: "#4d5156",
-                fontSize: "0.9rem"
-              }}>
-                {profile.service_city && (
-                  <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                    📍 {profile.service_city} {profile.service_area ? `- ${profile.service_area}` : ''}
-                  </span>
-                )}
-                
-                {profile.phone_number && (
-                  <a 
-                    href={`tel:${profile.phone_number}`}
+              {/* Profile Photo */}
+              <div style={{ flexShrink: 0 }}>
+                {profile.profile_photo ? (
+                  <img
+                    src={getImageUrl(profile.profile_photo)}
+                    alt={profile.full_name}
                     style={{
+                      width: "100px",
+                      height: "100px",
+                      objectFit: "cover",
+                      borderRadius: "50%",
+                      border: "3px solid #fff",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: "100px",
+                      height: "100px",
+                      borderRadius: "50%",
+                      backgroundColor: "#f0f0f0",
                       display: "flex",
                       alignItems: "center",
-                      gap: "0.25rem",
-                      color: "#1a0dab",
-                      textDecoration: "none"
+                      justifyContent: "center",
+                      color: "#666",
+                      fontSize: "2rem"
                     }}
                   >
-                    📞 {profile.phone_number}
-                  </a>
+                    👤
+                  </div>
                 )}
               </div>
 
-              <div style={{
-                display: "flex",
-                gap: "1rem",
-                marginTop: "1rem"
-              }}>
-                {profile.phone_number && (
-                  <a
-                    href={`tel:${profile.phone_number}`}
-                    style={{
-                      padding: "0.5rem 1rem",
-                      backgroundColor: "#2ecc71",
-                      color: "white",
-                      textDecoration: "none",
-                      borderRadius: "4px",
-                      fontSize: "0.9rem",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem"
-                    }}
-                  >
-                    📞 اتصل الآن
-                  </a>
-                )}
+              {/* Profile Info */}
+              <div style={{ flex: 1 }}>
+                <h2 
+                  onClick={() => {
+                    console.log('Profile clicked:', profile); // Debug log
+                    handleProfileClick(profile.profile_id);
+                  }}
+                  style={{ 
+                    margin: "0 0 0.5rem 0",
+                    color: "#1a0dab",
+                    fontSize: "1.2rem",
+                    cursor: "pointer",
+                    textDecoration: "underline"
+                  }}
+                >
+                  {profile.full_name}
+                </h2>
+
+                <p style={{ 
+                  color: "#4d5156",
+                  marginBottom: "1rem",
+                  fontSize: "1rem",
+                  lineHeight: "1.5"
+                }}>
+                  {profile.service_description}
+                </p>
+
+                <div style={{
+                  display: "flex",
+                  gap: "1rem",
+                  alignItems: "center",
+                  color: "#4d5156",
+                  fontSize: "0.9rem"
+                }}>
+                  {profile.service_city && (
+                    <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                      📍 {profile.service_city} {profile.service_area ? `- ${profile.service_area}` : ''}
+                    </span>
+                  )}
+                  
+                  {profile.phone_number && (
+                    <a 
+                      href={`tel:${profile.phone_number}`}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.25rem",
+                        color: "#1a0dab",
+                        textDecoration: "none"
+                      }}
+                    >
+                      📞 {profile.phone_number}
+                    </a>
+                  )}
+                </div>
+
+                <div style={{
+                  display: "flex",
+                  gap: "1rem",
+                  marginTop: "1rem"
+                }}>
+                  {profile.phone_number && (
+                    <a
+                      href={`tel:${profile.phone_number}`}
+                      style={{
+                        padding: "0.5rem 1rem",
+                        backgroundColor: "#2ecc71",
+                        color: "white",
+                        textDecoration: "none",
+                        borderRadius: "4px",
+                        fontSize: "0.9rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem"
+                      }}
+                    >
+                      📞 اتصل الآن
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
           );

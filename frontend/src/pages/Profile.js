@@ -3,6 +3,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { getCurrentProfile, supabase } from "../services/auth";
 import { updateProfile } from "../services/api";
 import { CITIES, AREAS } from "../constants/locations";
+import ImageUpload from "../components/ImageUpload";
+import ProfileImages from "../components/ProfileImages";
 
 function Profile() {
   const { user } = useAuth();
@@ -16,7 +18,9 @@ function Profile() {
     date_of_birth: "",
     service_city: "",
     service_area: "",
-    service_description: ""
+    service_description: "",
+    profile_photo: "",
+    portfolio_photos: []
   });
   const [availableAreas, setAvailableAreas] = useState([]);
 
@@ -52,7 +56,9 @@ function Profile() {
           date_of_birth: profileData.date_of_birth || "",
           service_city: profileData.service_city || "",
           service_area: profileData.service_area || "",
-          service_description: profileData.service_description || ""
+          service_description: profileData.service_description || "",
+          profile_photo: profileData.profile_photo || "",
+          portfolio_photos: profileData.portfolio_photos || []
         });
       }
     } catch (err) {
@@ -99,6 +105,28 @@ function Profile() {
       console.error('Error updating profile:', err);
       setError(`حدث خطأ أثناء تحديث الملف الشخصي: ${err.message}`);
     }
+  };
+
+  const handlePhotoUpload = async (paths) => {
+    if (paths && paths.length > 0) {
+      setFormData(prev => ({ ...prev, profile_photo: paths[0] }));
+    }
+  };
+
+  const handlePortfolioUpload = async (paths) => {
+    if (paths && paths.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        portfolio_photos: [...(prev.portfolio_photos || []), ...paths].slice(0, 5)
+      }));
+    }
+  };
+
+  const handleRemovePortfolioPhoto = (indexToRemove) => {
+    setFormData(prev => ({
+      ...prev,
+      portfolio_photos: prev.portfolio_photos.filter((_, index) => index !== indexToRemove)
+    }));
   };
 
   if (!user) {
@@ -159,6 +187,89 @@ function Profile() {
         )}
 
         <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: "1.5rem" }}>
+            <label style={{
+              display: "block",
+              marginBottom: "0.5rem",
+              color: "#4d5156",
+              fontSize: "1rem"
+            }}>
+              الصورة الشخصية
+            </label>
+            <ProfileImages
+              profilePhoto={formData.profile_photo}
+              portfolioPhotos={formData.portfolio_photos}
+            />
+            <ImageUpload
+              onUploadComplete={handlePhotoUpload}
+              type="profile"
+              maxFiles={1}
+            />
+          </div>
+
+          <div style={{ marginBottom: "1.5rem" }}>
+            <label style={{
+              display: "block",
+              marginBottom: "0.5rem",
+              color: "#4d5156",
+              fontSize: "1rem"
+            }}>
+              صور الأعمال السابقة (حد أقصى 5 صور)
+            </label>
+            <ImageUpload
+              onUploadComplete={handlePortfolioUpload}
+              type="portfolio"
+              maxFiles={5}
+            />
+            {formData.portfolio_photos && formData.portfolio_photos.length > 0 && (
+              <div style={{ marginTop: "1rem" }}>
+                <p style={{ fontSize: "0.9rem", color: "#666" }}>
+                  يمكنك النقر على الصورة لحذفها
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+                  {formData.portfolio_photos.map((photo, index) => (
+                    <div
+                      key={index}
+                      style={{ position: "relative", cursor: "pointer" }}
+                      onClick={() => handleRemovePortfolioPhoto(index)}
+                    >
+                      <img
+                        src={supabase.storage.from('profile-photos').getPublicUrl(photo).data.publicUrl}
+                        alt={`Portfolio ${index + 1}`}
+                        style={{
+                          width: "100px",
+                          height: "100px",
+                          objectFit: "cover",
+                          borderRadius: "4px"
+                        }}
+                      />
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          backgroundColor: "rgba(0,0,0,0.5)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "white",
+                          opacity: 0,
+                          transition: "opacity 0.2s"
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.opacity = "1"}
+                        onMouseLeave={e => e.currentTarget.style.opacity = "0"}
+                      >
+                        حذف
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           <div style={{ marginBottom: "1.5rem" }}>
             <label style={{
               display: "block",

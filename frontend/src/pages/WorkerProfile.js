@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getProfile } from "../services/api";
+import { supabase } from "../services/auth";
+import ProfileImages from "../components/ProfileImages";
 
 function WorkerProfile() {
   const { id } = useParams();
@@ -93,14 +95,92 @@ function WorkerProfile() {
         padding: "2rem",
         boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
       }}>
-        <h1 style={{ 
-          margin: "0 0 1.5rem 0",
-          color: "#1a0dab",
-          fontSize: "2rem"
+        {/* Profile Header with Photo */}
+        <div style={{
+          display: "flex",
+          gap: "2rem",
+          marginBottom: "2rem",
+          alignItems: "center"
         }}>
-          {profile.full_name}
-        </h1>
+          <div style={{ flexShrink: 0 }}>
+            {profile.profile_photo ? (
+              <img
+                src={supabase.storage.from('profile-photos').getPublicUrl(profile.profile_photo).data.publicUrl}
+                alt={profile.full_name}
+                style={{
+                  width: "150px",
+                  height: "150px",
+                  objectFit: "cover",
+                  borderRadius: "50%",
+                  border: "3px solid #fff",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "150px",
+                  height: "150px",
+                  borderRadius: "50%",
+                  backgroundColor: "#f0f0f0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#666",
+                  fontSize: "3rem"
+                }}
+              >
+                👤
+              </div>
+            )}
+          </div>
 
+          <div style={{ flex: 1 }}>
+            <h1 style={{ 
+              margin: "0 0 1rem 0",
+              color: "#1a0dab",
+              fontSize: "2rem"
+            }}>
+              {profile.full_name}
+            </h1>
+
+            <div style={{
+              display: "flex",
+              gap: "1rem",
+              flexWrap: "wrap"
+            }}>
+              {profile.service_city && (
+                <span style={{ 
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.25rem",
+                  color: "#4d5156",
+                  fontSize: "1rem"
+                }}>
+                  📍 {profile.service_city} {profile.service_area ? `- ${profile.service_area}` : ''}
+                </span>
+              )}
+              
+              {profile.phone_number && (
+                <a 
+                  href={`tel:${profile.phone_number}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.25rem",
+                    color: "#1a0dab",
+                    textDecoration: "none",
+                    fontSize: "1rem"
+                  }}
+                >
+                  📞 {profile.phone_number}
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Service Description */}
         <div style={{ marginBottom: "2rem" }}>
           <h2 style={{ 
             color: "#4d5156",
@@ -118,67 +198,41 @@ function WorkerProfile() {
           </p>
         </div>
 
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: "1.5rem",
-          marginBottom: "2rem"
-        }}>
-          {profile.service_city && (
-            <div>
-              <h3 style={{ 
-                color: "#666",
-                fontSize: "1rem",
-                marginBottom: "0.5rem"
-              }}>
-                الموقع
-              </h3>
-              <p style={{ 
-                color: "#4d5156",
-                fontSize: "1.1rem"
-              }}>
-                📍 {profile.service_city} {profile.service_area ? `- ${profile.service_area}` : ''}
-              </p>
+        {/* Portfolio Photos */}
+        {profile.portfolio_photos && profile.portfolio_photos.length > 0 && (
+          <div style={{ marginBottom: "2rem" }}>
+            <h2 style={{ 
+              color: "#4d5156",
+              fontSize: "1.2rem",
+              marginBottom: "1rem"
+            }}>
+              أعمال سابقة
+            </h2>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+              gap: "1rem"
+            }}>
+              {profile.portfolio_photos.map((photo, index) => (
+                <div key={index}>
+                  <img
+                    src={supabase.storage.from('profile-photos').getPublicUrl(photo).data.publicUrl}
+                    alt={`Portfolio ${index + 1}`}
+                    style={{
+                      width: "100%",
+                      height: "200px",
+                      objectFit: "cover",
+                      borderRadius: "8px",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                    }}
+                  />
+                </div>
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {profile.phone_number && (
-            <div>
-              <h3 style={{ 
-                color: "#666",
-                fontSize: "1rem",
-                marginBottom: "0.5rem"
-              }}>
-                رقم الهاتف
-              </h3>
-              <p style={{ 
-                color: "#4d5156",
-                fontSize: "1.1rem"
-              }}>
-                📞 {profile.phone_number}
-              </p>
-            </div>
-          )}
-
-          {profile.email && (
-            <div>
-              <h3 style={{ 
-                color: "#666",
-                fontSize: "1rem",
-                marginBottom: "0.5rem"
-              }}>
-                البريد الإلكتروني
-              </h3>
-              <p style={{ 
-                color: "#4d5156",
-                fontSize: "1.1rem"
-              }}>
-                ✉️ {profile.email}
-              </p>
-            </div>
-          )}
-        </div>
-
+        {/* Contact Buttons */}
         <div style={{
           display: "flex",
           gap: "1rem",

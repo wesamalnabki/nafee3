@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { initiateSignUp, verifyOTP } from "../services/auth";
 import { useNavigate } from "react-router-dom";
+import ImageUpload from "../components/ImageUpload";
 
 // List of main Syrian cities
 const SYRIAN_CITIES = [
@@ -24,7 +25,7 @@ function Signup() {
   const [phone, setPhone] = useState("");
   const [fullName, setFullName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
-  const [photo, setPhoto] = useState(null);
+  const [profilePhoto, setProfilePhoto] = useState(null);
   const [service_city, setServiceCity] = useState("");
   const [otp, setOtp] = useState("");
   const [showOtpInput, setShowOtpInput] = useState(false);
@@ -32,10 +33,9 @@ function Signup() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setPhoto(file);
+  const handlePhotoUpload = (paths) => {
+    if (paths && paths.length > 0) {
+      setProfilePhoto(paths[0]);
     }
   };
 
@@ -44,8 +44,14 @@ function Signup() {
     setError(null);
     setLoading(true);
 
+    if (!profilePhoto) {
+      setError("الرجاء تحميل صورة شخصية");
+      setLoading(false);
+      return;
+    }
+
     try {
-      await initiateSignUp(phone, fullName, dateOfBirth, photo, service_city);
+      await initiateSignUp(phone, fullName, dateOfBirth, profilePhoto, service_city);
       setShowOtpInput(true);
     } catch (err) {
       setError(err.message);
@@ -169,6 +175,22 @@ function Signup() {
                 color: "#4d5156",
                 fontSize: "1rem"
               }}>
+                الصورة الشخصية
+              </label>
+              <ImageUpload
+                onUploadComplete={handlePhotoUpload}
+                type="profile"
+                maxFiles={1}
+              />
+            </div>
+
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                color: "#4d5156",
+                fontSize: "1rem"
+              }}>
                 الاسم الثلاثي
               </label>
               <input 
@@ -255,29 +277,6 @@ function Signup() {
                 onChange={e => setPhone(e.target.value)} 
                 required
                 placeholder="+966XXXXXXXXX"
-                style={{
-                  width: "100%",
-                  padding: "0.75rem",
-                  border: "1px solid #dfe1e5",
-                  borderRadius: "4px",
-                  fontSize: "1rem"
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: "1.5rem" }}>
-              <label style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                color: "#4d5156",
-                fontSize: "1rem"
-              }}>
-                الصورة الشخصية
-              </label>
-              <input 
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoChange}
                 style={{
                   width: "100%",
                   padding: "0.75rem",

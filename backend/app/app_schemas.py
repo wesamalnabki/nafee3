@@ -1,6 +1,6 @@
 # /app/app_schemas.py
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import date
 
 # Input model (no profile_id expected from client)
@@ -12,6 +12,8 @@ class Profile(BaseModel):
     service_city: Optional[str] = None
     service_area: Optional[str] = None
     service_description: Optional[str] = None
+    profile_photo: Optional[str] = None  # Path to profile photo in Supabase
+    portfolio_photos: Optional[List[str]] = None  # List of paths to portfolio photos in Supabase
 
 
 class SearchInput(BaseModel):
