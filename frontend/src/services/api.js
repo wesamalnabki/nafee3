@@ -22,8 +22,12 @@ export const searchProfiles = async (query, simThreshold = 0.1, topK = 50) => {
 
 export const getProfile = async (profile_id) => {
   try {
+    if (!profile_id) {
+      throw new Error('Profile ID is required');
+    }
+    
     console.log('Fetching profile for ID:', profile_id);
-    const response = await fetch(`${API_BASE}/get_profile?profile_id=${profile_id}`);
+    const response = await fetch(`${API_BASE}/get_profile?profile_id=${encodeURIComponent(profile_id)}`);
     const data = await response.json();
     console.log('Profile response:', data);
     

@@ -3,22 +3,27 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getProfile } from "../services/api";
 
 function WorkerProfile() {
-  const { profileId } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    console.log('WorkerProfile received profileId:', profileId);
+    console.log('WorkerProfile received id:', id);
+    if (!id) {
+      setError("Profile ID is missing");
+      setLoading(false);
+      return;
+    }
     loadProfile();
-  }, [profileId]);
+  }, [id]);
 
   const loadProfile = async () => {
     try {
       setLoading(true);
-      console.log('Loading profile with ID:', profileId);
-      const response = await getProfile(profileId);
+      console.log('Loading profile with ID:', id);
+      const response = await getProfile(id);
       console.log('Profile response:', response);
       
       if (response.status === 'success' && response.profile) {
