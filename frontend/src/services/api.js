@@ -1,6 +1,5 @@
 // services/api.js
 
-import { supabase } from './auth';
 
 const API_BASE = 'http://localhost:8000'  // adjust if needed
 

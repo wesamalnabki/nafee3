@@ -142,6 +142,24 @@ export const signIn = async (phone) => {
   }
 };
 
+export const verifyLoginOTP = async (phone, token) => {
+  try {
+    // Verify the OTP for login
+    const { data: authData, error: authError } = await supabase.auth.verifyOtp({
+      phone,
+      token,
+      type: 'sms'
+    });
+    
+    if (authError) throw authError;
+    
+    return authData;
+  } catch (error) {
+    console.error('Error in verifyLoginOTP:', error);
+    throw error;
+  }
+};
+
 export const signOut = async () => {
   try {
     const { error } = await supabase.auth.signOut();

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { signIn, verifyOTP } from "../services/auth";
+import { signIn, verifyLoginOTP } from "../services/auth";
 
 function Login() {
   const [phone, setPhone] = useState("");
@@ -42,7 +42,7 @@ function Login() {
     try {
       setError(null);
       setLoading(true);
-      await verifyOTP(phone, otp);
+      await verifyLoginOTP(phone, otp);
       navigate("/");
     } catch (err) {
       setError("رمز التحقق غير صحيح. يرجى المحاولة مرة أخرى.");

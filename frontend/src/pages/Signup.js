@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { initiateSignUp, verifyOTP } from "../services/auth";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../services/auth";
 
 // List of main Syrian cities
 const SYRIAN_CITIES = [
@@ -62,7 +61,7 @@ function Signup() {
 
     try {
       // Verify OTP
-      const { data } = await verifyOTP(phone, otp);
+      await verifyOTP(phone, otp);
       
       // Show success message and redirect to profile
       alert("تم إنشاء حسابك بنجاح!");
