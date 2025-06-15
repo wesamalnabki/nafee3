@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from typing import Dict, List
+from datetime import date
 
 from dotenv import load_dotenv, find_dotenv
 from qdrant_client import QdrantClient, models as qdrant_models
@@ -22,11 +23,6 @@ COLLECTION_NAME = "nafee3-profiles"
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-def generate_id(value: str) -> str:
-    """Generate a consistent hash ID for a given value."""
-    return hashlib.md5(value.encode()).hexdigest()
 
 
 class ProfileManager:
@@ -57,15 +53,15 @@ class ProfileManager:
                 field_schema="keyword",
             )
 
-    def profile_exists(self, search_key: str, search_value: str) -> bool:
-        """Check if a profile exists based on a field and value."""
+    def profile_exists(self, profile_id: str) -> bool:
+        """Check if a profile exists by its ID."""
         result = self.qdrant_client.count(
             collection_name=COLLECTION_NAME,
             count_filter=qdrant_models.Filter(
                 must=[
                     qdrant_models.FieldCondition(
-                        key=search_key,
-                        match=qdrant_models.MatchValue(value=search_value),
+                        key="profile_id",
+                        match=qdrant_models.MatchValue(value=profile_id),
                     )
                 ]
             ),
@@ -75,26 +71,34 @@ class ProfileManager:
 
     def get_embedding(self, text: str) -> List[float]:
         """Generate embedding vector for a given text."""
+        if not text:
+            return [0.0] * EMBEDDING_SIZE
         return self.embedding_model.encode([text])[0].tolist()
 
     def add_profile(self, profile: Profile) -> Dict:
         """Add a new profile to the Qdrant collection."""
         logger.info("Creating new profile")
 
-        profile.profile_id = generate_id(profile.email)
-        if self.profile_exists("profile_id", profile.profile_id):
+        # Check if profile with this ID already exists
+        if self.profile_exists(profile.profile_id):
             return {
                 "status": "conflict",
                 "message": f"Profile with ID '{profile.profile_id}' already exists."
             }
+
+        # Prepare the profile data
+        profile_data = profile.model_dump()
+
+        # Create vector from service description
+        vector = self.get_embedding(profile.service_description or "")
 
         self.qdrant_client.upsert(
             collection_name=COLLECTION_NAME,
             points=[
                 qdrant_models.PointStruct(
                     id=profile.profile_id,
-                    payload=profile.model_dump(),
-                    vector={"dense": self.get_embedding(profile.service_description)},
+                    payload=profile_data,
+                    vector={"dense": vector},
                 )
             ],
         )
@@ -107,7 +111,7 @@ class ProfileManager:
 
     def delete_profile(self, profile_id: str) -> Dict:
         """Delete a profile from the Qdrant collection."""
-        if not self.profile_exists("profile_id", profile_id):
+        if not self.profile_exists(profile_id):
             return {"status": "not_found", "message": "Profile not found."}
 
         try:
@@ -132,20 +136,25 @@ class ProfileManager:
     def update_profile(self, profile: Profile) -> Dict:
         """Update an existing profile's payload."""
         try:
-            if not self.profile_exists("profile_id", profile.profile_id):
+            if not self.profile_exists(profile.profile_id):
                 return {"status": "not_found", "message": "Profile not found."}
 
-            self.qdrant_client.set_payload(
+            # Prepare the profile data
+            profile_data = profile.model_dump()
+
+            # Create vector from service description
+            vector = self.get_embedding(profile.service_description or "")
+
+            # Update both payload and vector
+            self.qdrant_client.upsert(
                 collection_name=COLLECTION_NAME,
-                payload=profile.model_dump(),
-                points=qdrant_models.Filter(
-                    must=[
-                        qdrant_models.FieldCondition(
-                            key="profile_id",
-                            match=qdrant_models.MatchValue(value=profile.profile_id),
-                        )
-                    ]
-                ),
+                points=[
+                    qdrant_models.PointStruct(
+                        id=profile.profile_id,
+                        payload=profile_data,
+                        vector={"dense": vector},
+                    )
+                ],
             )
             return {
                 "status": "success",
@@ -190,7 +199,7 @@ class ProfileManager:
             )
 
             return [
-                {**c.payload, "similarity": c.score}
+                {**c.payload, "profile_id": c.id, "similarity": c.score}
                 for c in candidates.points
                 if c.score >= search_input.sim_threshold
             ]
@@ -206,11 +215,12 @@ class ProfileManager:
 
             for idx, profile in enumerate(profiles):
                 fake_profile = Profile(
-                    profile_id=generate_id(f"{idx}_{profile['email']}"),
-                    name=profile["name"],
-                    email=f"{idx}_{profile['email']}",
-                    phone_number=profile["phone_number"],
-                    location=profile["location"],
+                    profile_id=generate_id(f"{idx}_{profile['phone_number']}"),
+                    phone_number=f"{idx}_{profile['phone_number']}",
+                    full_name=profile["name"],
+                    date_of_birth=date(1990, 1, 1),  # Default date for fake data
+                    service_city=profile["location"],
+                    service_area=None,
                     service_description=profile["service_description"],
                 )
                 self.add_profile(fake_profile)

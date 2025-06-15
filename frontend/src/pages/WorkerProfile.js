@@ -10,13 +10,16 @@ function WorkerProfile() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    console.log('WorkerProfile received profileId:', profileId);
     loadProfile();
   }, [profileId]);
 
   const loadProfile = async () => {
     try {
       setLoading(true);
+      console.log('Loading profile with ID:', profileId);
       const response = await getProfile(profileId);
+      console.log('Profile response:', response);
       
       if (response.status === 'success' && response.profile) {
         setProfile(response.profile);
@@ -25,6 +28,7 @@ function WorkerProfile() {
         setError(response.message || "فشل في تحميل الملف الشخصي");
       }
     } catch (err) {
+      console.error('Error loading profile:', err);
       setError("فشل في تحميل الملف الشخصي");
     } finally {
       setLoading(false);
@@ -89,7 +93,7 @@ function WorkerProfile() {
           color: "#1a0dab",
           fontSize: "2rem"
         }}>
-          {profile.name}
+          {profile.full_name}
         </h1>
 
         <div style={{ marginBottom: "2rem" }}>
@@ -105,7 +109,7 @@ function WorkerProfile() {
             lineHeight: "1.6",
             fontSize: "1.1rem"
           }}>
-            {profile.service_description}
+            {profile.service_description || "لا يوجد وصف للخدمة"}
           </p>
         </div>
 
@@ -115,7 +119,7 @@ function WorkerProfile() {
           gap: "1.5rem",
           marginBottom: "2rem"
         }}>
-          {profile.location && (
+          {profile.service_city && (
             <div>
               <h3 style={{ 
                 color: "#666",
@@ -128,7 +132,7 @@ function WorkerProfile() {
                 color: "#4d5156",
                 fontSize: "1.1rem"
               }}>
-                📍 {profile.location}
+                📍 {profile.service_city} {profile.service_area ? `- ${profile.service_area}` : ''}
               </p>
             </div>
           )}
@@ -217,4 +221,4 @@ function WorkerProfile() {
   );
 }
 
-export default WorkerProfile; 
+export default WorkerProfile;

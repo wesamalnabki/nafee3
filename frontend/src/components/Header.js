@@ -15,8 +15,28 @@ function Header() {
       boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
       direction: "rtl"
     }}>
-      <Link to="/" style={{ textDecoration: "none", color: "inherit" }}>
-        <h1 style={{ margin: 0, color: "#2c3e50" }}>نافع - افضل الخدمات المنزلية بيد خبراء موثوقين</h1>
+      <Link to="/" style={{ 
+        textDecoration: "none", 
+        color: "inherit",
+        display: "flex",
+        alignItems: "center",
+        gap: "1rem"
+      }}>
+        <img 
+          src="/logo.png" 
+          alt="نافع" 
+          style={{ 
+            height: "40px",
+            width: "auto"
+          }} 
+        />
+        <h1 style={{ 
+          margin: 0, 
+          color: "#2c3e50",
+          fontSize: "1.5rem"
+        }}>
+          نافع - افضل الخدمات المنزلية بيد خبراء موثوقين
+        </h1>
       </Link>
       
       <div style={{ display: "flex", gap: "1rem" }}>

@@ -7,7 +7,6 @@ import Home from "./pages/Home";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
-import SearchResults from "./pages/SearchResults";
 import WorkerProfile from "./pages/WorkerProfile";
 
 function App() {
@@ -21,8 +20,7 @@ function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/login" element={<Login />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/search" element={<SearchResults />} />
-            <Route path="/worker/:profileId" element={<WorkerProfile />} />
+            <Route path="/worker/:id" element={<WorkerProfile />} />
           </Routes>
         </main>
       </div>

@@ -1,79 +1,111 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { getProfile, updateProfile } from "../services/api";
+import { getCurrentProfile, supabase } from "../services/auth";
+import { updateProfile } from "../services/api";
+import { CITIES, AREAS } from "../constants/locations";
 
 function Profile() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState(null);
-  const [originalProfile, setOriginalProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [hasChanges, setHasChanges] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [formData, setFormData] = useState({
+    full_name: "",
+    phone_number: "",
+    date_of_birth: "",
+    service_city: "",
+    service_area: "",
+    service_description: ""
+  });
+  const [availableAreas, setAvailableAreas] = useState([]);
 
   useEffect(() => {
-    if (user?.user_metadata?.profile_id) {
-      loadProfile(user.user_metadata.profile_id);
-    } else if (user?.email) {
-      setError("لم يتم العثور على معرف الملف الشخصي. يرجى تحديث معلومات المستخدم.");
-      setLoading(false);
+    if (user) {
+      loadProfile();
     }
   }, [user]);
 
-  const loadProfile = async (profileId) => {
+  useEffect(() => {
+    // Update available areas when city changes
+    if (formData.service_city) {
+      setAvailableAreas(AREAS[formData.service_city] || []);
+      // Reset area if it's not available in the new city
+      if (!AREAS[formData.service_city]?.includes(formData.service_area)) {
+        setFormData(prev => ({ ...prev, service_area: "" }));
+      }
+    } else {
+      setAvailableAreas([]);
+    }
+  }, [formData.service_city]);
+
+  const loadProfile = async () => {
     try {
       setLoading(true);
-      const response = await getProfile(profileId);
-      
-      if (response.status === 'success' && response.profile) {
-        setProfile(response.profile);
-        setOriginalProfile(response.profile);
-        setError(null);
-        setHasChanges(false);
-      } else {
-        setError(response.message || "فشل في تحميل الملف الشخصي");
+      setError(null);
+      const profileData = await getCurrentProfile();
+      if (profileData) {
+        setProfile(profileData);
+        setFormData({
+          full_name: profileData.full_name || "",
+          phone_number: profileData.phone_number || "",
+          date_of_birth: profileData.date_of_birth || "",
+          service_city: profileData.service_city || "",
+          service_area: profileData.service_area || "",
+          service_description: profileData.service_description || ""
+        });
       }
     } catch (err) {
-      setError("فشل في تحميل الملف الشخصي");
+      setError("حدث خطأ أثناء تحميل الملف الشخصي");
+      console.error("Error loading profile:", err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleChange = (e) => {
-    const newProfile = { ...profile, [e.target.name]: e.target.value };
-    setProfile(newProfile);
-    
-    const hasChanges = Object.keys(newProfile).some(key => 
-      newProfile[key] !== originalProfile[key]
-    );
-    setHasChanges(hasChanges);
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
     try {
-      const res = await updateProfile(profile);
-      if (res.status === 'success') {
-        setSuccess("تم تحديث الملف الشخصي بنجاح");
-        setError(null);
-        setOriginalProfile(profile);
-        setHasChanges(false);
-      } else {
-        setError("فشل في تحديث الملف الشخصي");
-        setSuccess(null);
+      console.log('Updating profile with data:', formData);
+
+      // Update in backend using updateProfile
+      console.log('Sending to backend:', {
+        profile_id: user.id,
+        ...formData
+      });
+
+      const backendResponse = await updateProfile({
+        profile_id: user.id,
+        ...formData
+      });
+
+      console.log('Backend response:', backendResponse);
+
+      if (backendResponse.status === 'error') {
+        throw new Error(`Backend error: ${backendResponse.message}`);
       }
+
+      setSuccess("تم تحديث الملف الشخصي بنجاح");
+      await loadProfile(); // Reload profile to get updated data
     } catch (err) {
-      setError("فشل في تحديث الملف الشخصي");
-      setSuccess(null);
+      console.error('Error updating profile:', err);
+      setError(`حدث خطأ أثناء تحديث الملف الشخصي: ${err.message}`);
     }
   };
-  
+
   if (!user) {
     return (
       <div style={{ textAlign: "center", padding: "2rem" }}>
         <p style={{ fontSize: "1.2rem", color: "#666" }}>
-          يرجى تسجيل الدخول للوصول إلى صفحتي
+          يرجى تسجيل الدخول للوصول إلى ملفك الشخصي
         </p>
       </div>
     );
@@ -85,30 +117,6 @@ function Profile() {
         <p style={{ fontSize: "1.2rem", color: "#666" }}>
           جارٍ تحميل الملف الشخصي...
         </p>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div style={{ textAlign: "center", padding: "2rem" }}>
-        <p style={{ color: "#e74c3c", marginBottom: "1rem" }}>{error}</p>
-        {user?.user_metadata?.profile_id && (
-          <button
-            onClick={() => loadProfile(user.user_metadata.profile_id)}
-            style={{
-              padding: "0.75rem 1.5rem",
-              backgroundColor: "#4285f4",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontSize: "1rem"
-            }}
-          >
-            إعادة المحاولة
-          </button>
-        )}
       </div>
     );
   }
@@ -127,8 +135,28 @@ function Profile() {
           fontSize: "2rem",
           textAlign: "center"
         }}>
-          صفحتي
+          صفحتي الشخصية
         </h1>
+
+        {error && (
+          <p style={{ 
+            color: "#e74c3c", 
+            marginBottom: "1rem",
+            textAlign: "center"
+          }}>
+            {error}
+          </p>
+        )}
+
+        {success && (
+          <p style={{ 
+            color: "#2ecc71", 
+            marginBottom: "1rem",
+            textAlign: "center"
+          }}>
+            {success}
+          </p>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: "1.5rem" }}>
@@ -138,12 +166,12 @@ function Profile() {
               color: "#4d5156",
               fontSize: "1rem"
             }}>
-              الاسم
+              الاسم الكامل
             </label>
             <input
               type="text"
-              name="name"
-              value={profile.name || ""}
+              name="full_name"
+              value={formData.full_name}
               onChange={handleChange}
               required
               style={{
@@ -151,38 +179,7 @@ function Profile() {
                 padding: "0.75rem",
                 border: "1px solid #dfe1e5",
                 borderRadius: "4px",
-                fontSize: "1rem",
-                transition: "border-color 0.2s",
-                ":focus": {
-                  borderColor: "#4285f4",
-                  outline: "none"
-                }
-              }}
-            />
-          </div>
-
-          <div style={{ marginBottom: "1.5rem" }}>
-            <label style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              color: "#4d5156",
-              fontSize: "1rem"
-            }}>
-              البريد الإلكتروني
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={profile.email || ""}
-              disabled
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                border: "1px solid #dfe1e5",
-                borderRadius: "4px",
-                fontSize: "1rem",
-                backgroundColor: "#f8f9fa",
-                color: "#666"
+                fontSize: "1rem"
               }}
             />
           </div>
@@ -197,21 +194,17 @@ function Profile() {
               رقم الهاتف
             </label>
             <input
-              type="text"
+              type="tel"
               name="phone_number"
-              value={profile.phone_number || ""}
-              onChange={handleChange}
+              value={formData.phone_number}
+              disabled
               style={{
                 width: "100%",
                 padding: "0.75rem",
                 border: "1px solid #dfe1e5",
                 borderRadius: "4px",
                 fontSize: "1rem",
-                transition: "border-color 0.2s",
-                ":focus": {
-                  borderColor: "#4285f4",
-                  outline: "none"
-                }
+                backgroundColor: "#f5f5f5"
               }}
             />
           </div>
@@ -223,40 +216,12 @@ function Profile() {
               color: "#4d5156",
               fontSize: "1rem"
             }}>
-              الموقع
+              تاريخ الميلاد
             </label>
             <input
-              type="text"
-              name="location"
-              value={profile.location || ""}
-              onChange={handleChange}
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                border: "1px solid #dfe1e5",
-                borderRadius: "4px",
-                fontSize: "1rem",
-                transition: "border-color 0.2s",
-                ":focus": {
-                  borderColor: "#4285f4",
-                  outline: "none"
-                }
-              }}
-            />
-          </div>
-
-          <div style={{ marginBottom: "1.5rem" }}>
-            <label style={{
-              display: "block",
-              marginBottom: "0.5rem",
-              color: "#4d5156",
-              fontSize: "1rem"
-            }}>
-              وصف الخدمة
-            </label>
-            <textarea
-              name="service_description"
-              value={profile.service_description || ""}
+              type="date"
+              name="date_of_birth"
+              value={formData.date_of_birth}
               onChange={handleChange}
               required
               style={{
@@ -264,59 +229,116 @@ function Profile() {
                 padding: "0.75rem",
                 border: "1px solid #dfe1e5",
                 borderRadius: "4px",
-                fontSize: "1rem",
-                minHeight: "120px",
-                resize: "vertical",
-                transition: "border-color 0.2s",
-                ":focus": {
-                  borderColor: "#4285f4",
-                  outline: "none"
-                }
+                fontSize: "1rem"
               }}
             />
           </div>
 
-          {error && (
-            <p style={{ 
-              color: "#e74c3c", 
-              marginBottom: "1rem",
-              textAlign: "center"
+          <div style={{ marginBottom: "1.5rem" }}>
+            <label style={{
+              display: "block",
+              marginBottom: "0.5rem",
+              color: "#4d5156",
+              fontSize: "1rem"
             }}>
-              {error}
-            </p>
-          )}
-
-          {success && (
-            <p style={{ 
-              color: "#2ecc71", 
-              marginBottom: "1rem",
-              textAlign: "center"
-            }}>
-              {success}
-            </p>
-          )}
-
-          {hasChanges && (
-            <button
-              type="submit"
+              المدينة
+            </label>
+            <select
+              name="service_city"
+              value={formData.service_city}
+              onChange={handleChange}
+              required
               style={{
                 width: "100%",
                 padding: "0.75rem",
-                backgroundColor: "#4285f4",
-                color: "white",
-                border: "none",
+                border: "1px solid #dfe1e5",
                 borderRadius: "4px",
-                fontSize: "1rem",
-                cursor: "pointer",
-                transition: "background-color 0.2s",
-                ":hover": {
-                  backgroundColor: "#3367d6"
-                }
+                fontSize: "1rem"
               }}
             >
-              تحديث الملف الشخصي
-            </button>
-          )}
+              <option value="">اختر المدينة</option>
+              {CITIES.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ marginBottom: "1.5rem" }}>
+            <label style={{
+              display: "block",
+              marginBottom: "0.5rem",
+              color: "#4d5156",
+              fontSize: "1rem"
+            }}>
+              المنطقة
+            </label>
+            <select
+              name="service_area"
+              value={formData.service_area}
+              onChange={handleChange}
+              required
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                border: "1px solid #dfe1e5",
+                borderRadius: "4px",
+                fontSize: "1rem"
+              }}
+            >
+              <option value="">اختر المنطقة</option>
+              {availableAreas.map((area) => (
+                <option key={area} value={area}>
+                  {area}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ marginBottom: "1.5rem" }}>
+            <label style={{
+              display: "block",
+              marginBottom: "0.5rem",
+              color: "#4d5156",
+              fontSize: "1rem"
+            }}>
+              وصف موسع عن الخدمة
+            </label>
+            <textarea
+              name="service_description"
+              value={formData.service_description}
+              onChange={handleChange}
+              required
+              rows="4"
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                border: "1px solid #dfe1e5",
+                borderRadius: "4px",
+                fontSize: "1rem",
+                resize: "vertical"
+              }}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: "0.75rem",
+              backgroundColor: "#2ecc71",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              fontSize: "1rem",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.7 : 1
+            }}
+          >
+            {loading ? "جاري الحفظ..." : "حفظ التغييرات"}
+          </button>
         </form>
       </div>
     </div>

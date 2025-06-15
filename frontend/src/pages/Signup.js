@@ -1,65 +1,53 @@
 import React, { useState } from "react";
-import { signUp } from "../services/auth";
+import { initiateSignUp, verifyOTP } from "../services/auth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../services/auth";
 
+// List of main Syrian cities
+const SYRIAN_CITIES = [
+  "دمشق",
+  "حلب",
+  "حمص",
+  "حماة",
+  "اللاذقية",
+  "طرطوس",
+  "دير الزور",
+  "الرقة",
+  "الحسكة",
+  "القامشلي",
+  "السويداء",
+  "درعا",
+  "إدلب",
+  "ريف دمشق"
+].sort(); // Sort cities alphabetically
+
 function Signup() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [location, setLocation] = useState("");
-  const [serviceDesc, setServiceDesc] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [photo, setPhoto] = useState(null);
+  const [service_city, setServiceCity] = useState("");
+  const [otp, setOtp] = useState("");
+  const [showOtpInput, setShowOtpInput] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
 
-  const handleSignup = async (e) => {
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPhoto(file);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    setLoading(true);
 
     try {
-      // First, create the user account
-      const user = await signUp(email, password);
-      if (!user) throw new Error("فشل في إنشاء الحساب");
-
-      // Then, create the profile
-      const profileResponse = await fetch("http://localhost:8000/add_profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          phone_number: phone,
-          location,
-          service_description: serviceDesc,
-        }),
-      });
-
-      if (!profileResponse.ok) {
-        throw new Error("فشل في إنشاء الملف الشخصي");
-      }
-
-      const profileData = await profileResponse.json();
-      
-      if (profileData.status === 'success' && profileData.profile_id) {
-        // Store the profile_id in the user's metadata
-        const { error: updateError } = await supabase.auth.updateUser({
-          data: { profile_id: profileData.profile_id }
-        });
-
-        if (updateError) {
-          console.error("Error updating user metadata:", updateError);
-        }
-
-        // Show success message and redirect to profile
-        alert("تم إنشاء حسابك بنجاح!");
-        navigate("/profile");
-      } else {
-        throw new Error(profileData.message || "فشل في إنشاء الملف الشخصي");
-      }
+      await initiateSignUp(phone, fullName, dateOfBirth, photo, service_city);
+      setShowOtpInput(true);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -67,78 +55,315 @@ function Signup() {
     }
   };
 
-  return (
-    <form onSubmit={handleSignup} dir="rtl" style={{ maxWidth: "400px", margin: "auto", padding: "2rem" }}>
-      <h2 style={{ textAlign: "center", marginBottom: "2rem" }}>إنشاء حساب</h2>
+  const handleVerification = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Verify OTP
+      const { data } = await verifyOTP(phone, otp);
       
-      <div style={{ marginBottom: "1rem" }}>
-        <input 
-          placeholder="الاسم" 
-          value={name} 
-          onChange={e => setName(e.target.value)} 
-          required 
-          style={{ width: "100%", padding: "0.5rem", marginBottom: "0.5rem" }}
-        />
-        <input 
-          placeholder="البريد الإلكتروني" 
-          type="email" 
-          value={email} 
-          onChange={e => setEmail(e.target.value)} 
-          required 
-          style={{ width: "100%", padding: "0.5rem", marginBottom: "0.5rem" }}
-        />
-        <input 
-          placeholder="كلمة المرور" 
-          type="password" 
-          value={password} 
-          onChange={e => setPassword(e.target.value)} 
-          required 
-          style={{ width: "100%", padding: "0.5rem", marginBottom: "0.5rem" }}
-        />
-        <input 
-          placeholder="رقم الهاتف" 
-          value={phone} 
-          onChange={e => setPhone(e.target.value)} 
-          style={{ width: "100%", padding: "0.5rem", marginBottom: "0.5rem" }}
-        />
-        <input 
-          placeholder="الموقع" 
-          value={location} 
-          onChange={e => setLocation(e.target.value)} 
-          style={{ width: "100%", padding: "0.5rem", marginBottom: "0.5rem" }}
-        />
-        <textarea 
-          placeholder="وصف الخدمة" 
-          value={serviceDesc} 
-          onChange={e => setServiceDesc(e.target.value)} 
-          required 
-          style={{ width: "100%", padding: "0.5rem", marginBottom: "0.5rem", minHeight: "100px" }}
-        />
+      // Show success message and redirect to profile
+      alert("تم إنشاء حسابك بنجاح!");
+      navigate("/profile");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (showOtpInput) {
+    return (
+      <form onSubmit={handleVerification} dir="rtl" style={{ maxWidth: "400px", margin: "auto", padding: "2rem" }}>
+        <h2 style={{ textAlign: "center", marginBottom: "2rem" }}>التحقق من رقم الهاتف</h2>
+        
+        <div style={{ marginBottom: "1.5rem" }}>
+          <label style={{
+            display: "block",
+            marginBottom: "0.5rem",
+            color: "#4d5156",
+            fontSize: "1rem"
+          }}>
+            رمز التحقق
+          </label>
+          <input 
+            type="text"
+            value={otp} 
+            onChange={e => setOtp(e.target.value)} 
+            required 
+            style={{
+              width: "100%",
+              padding: "0.75rem",
+              border: "1px solid #dfe1e5",
+              borderRadius: "4px",
+              fontSize: "1rem"
+            }}
+          />
+        </div>
+
+        {error && (
+          <p style={{ 
+            color: "#e74c3c", 
+            marginBottom: "1rem",
+            textAlign: "center"
+          }}>
+            {error}
+          </p>
+        )}
+
+        <button 
+          type="submit" 
+          disabled={loading}
+          style={{
+            width: "100%",
+            padding: "0.75rem",
+            backgroundColor: "#2ecc71",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            fontSize: "1rem",
+            cursor: loading ? "not-allowed" : "pointer",
+            opacity: loading ? 0.7 : 1
+          }}
+        >
+          {loading ? "جاري التحقق..." : "تحقق"}
+        </button>
+      </form>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "2rem" }}>
+      <div style={{
+        backgroundColor: "white",
+        borderRadius: "8px",
+        padding: "2rem",
+        boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+      }}>
+        <h1 style={{ 
+          margin: "0 0 2rem 0",
+          color: "#1a0dab",
+          fontSize: "2rem",
+          textAlign: "center"
+        }}>
+          إنشاء حساب جديد
+        </h1>
+
+        {error && (
+          <p style={{ 
+            color: "#e74c3c", 
+            marginBottom: "1rem",
+            textAlign: "center"
+          }}>
+            {error}
+          </p>
+        )}
+
+        {!showOtpInput ? (
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                color: "#4d5156",
+                fontSize: "1rem"
+              }}>
+                الاسم الثلاثي
+              </label>
+              <input 
+                type="text"
+                value={fullName} 
+                onChange={e => setFullName(e.target.value)} 
+                required 
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  border: "1px solid #dfe1e5",
+                  borderRadius: "4px",
+                  fontSize: "1rem"
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                color: "#4d5156",
+                fontSize: "1rem"
+              }}>
+                تاريخ الميلاد
+              </label>
+              <input 
+                type="date"
+                value={dateOfBirth} 
+                onChange={e => setDateOfBirth(e.target.value)} 
+                required 
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  border: "1px solid #dfe1e5",
+                  borderRadius: "4px",
+                  fontSize: "1rem"
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                color: "#4d5156",
+                fontSize: "1rem"
+              }}>
+                المدينة
+              </label>
+              <select
+                value={service_city}
+                onChange={e => setServiceCity(e.target.value)}
+                required
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  border: "1px solid #dfe1e5",
+                  borderRadius: "4px",
+                  fontSize: "1rem"
+                }}
+              >
+                <option value="">اختر المدينة</option>
+                {SYRIAN_CITIES.map((cityName) => (
+                  <option key={cityName} value={cityName}>
+                    {cityName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                color: "#4d5156",
+                fontSize: "1rem"
+              }}>
+                رقم الهاتف
+              </label>
+              <input 
+                type="tel"
+                value={phone} 
+                onChange={e => setPhone(e.target.value)} 
+                required
+                placeholder="+966XXXXXXXXX"
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  border: "1px solid #dfe1e5",
+                  borderRadius: "4px",
+                  fontSize: "1rem"
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                color: "#4d5156",
+                fontSize: "1rem"
+              }}>
+                الصورة الشخصية
+              </label>
+              <input 
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  border: "1px solid #dfe1e5",
+                  borderRadius: "4px",
+                  fontSize: "1rem"
+                }}
+              />
+            </div>
+
+            <button 
+              type="submit" 
+              disabled={loading}
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                backgroundColor: "#2ecc71",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                fontSize: "1rem",
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.7 : 1
+              }}
+            >
+              {loading ? "جاري التسجيل..." : "تسجيل"}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleVerification} dir="rtl">
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                color: "#4d5156",
+                fontSize: "1rem"
+              }}>
+                رمز التحقق
+              </label>
+              <input 
+                type="text"
+                value={otp} 
+                onChange={e => setOtp(e.target.value)} 
+                required 
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  border: "1px solid #dfe1e5",
+                  borderRadius: "4px",
+                  fontSize: "1rem"
+                }}
+              />
+            </div>
+
+            {error && (
+              <p style={{ 
+                color: "#e74c3c", 
+                marginBottom: "1rem",
+                textAlign: "center"
+              }}>
+                {error}
+              </p>
+            )}
+
+            <button 
+              type="submit" 
+              disabled={loading}
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                backgroundColor: "#2ecc71",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                fontSize: "1rem",
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.7 : 1
+              }}
+            >
+              {loading ? "جاري التحقق..." : "تحقق"}
+            </button>
+          </form>
+        )}
       </div>
-
-      {error && (
-        <p style={{ color: "#e74c3c", marginBottom: "1rem", textAlign: "center" }}>
-          {error}
-        </p>
-      )}
-
-      <button 
-        type="submit" 
-        disabled={loading}
-        style={{
-          width: "100%",
-          padding: "0.75rem",
-          backgroundColor: "#2ecc71",
-          color: "white",
-          border: "none",
-          borderRadius: "4px",
-          cursor: loading ? "not-allowed" : "pointer",
-          opacity: loading ? 0.7 : 1
-        }}
-      >
-        {loading ? "جاري التسجيل..." : "سجل الآن"}
-      </button>
-    </form>
+    </div>
   );
 }
 
