@@ -1,5 +1,5 @@
-import hashlib
 import json
+import uuid
 import logging
 import os
 from typing import Dict, List
@@ -13,7 +13,8 @@ from sentence_transformers import SentenceTransformer
 from app_schemas import Profile, SearchInput
 
 # Load environment variables
-load_dotenv(find_dotenv(usecwd=True))
+print("load_dotenv", load_dotenv(find_dotenv(usecwd=True)))
+print("QDRANT_URL", os.getenv("QDRANT_URL"))
 
 # Constants
 EMBEDDING_SIZE = 768
@@ -207,7 +208,7 @@ class ProfileManager:
             logger.exception("Search failed.")
             return []
 
-    def add_fake_clients(self, json_path: str = "../data/workers_data.json") -> None:
+    def add_fake_profiles(self, json_path: str = "../data/workers_data.json") -> Dict:
         """Load and insert fake profiles from a JSON file (for testing)."""
         try:
             with open(json_path, "r", encoding="utf-8") as f:
@@ -215,15 +216,16 @@ class ProfileManager:
 
             for idx, profile in enumerate(profiles):
                 fake_profile = Profile(
-                    profile_id=generate_id(f"{idx}_{profile['phone_number']}"),
-                    phone_number=f"{idx}_{profile['phone_number']}",
+                    profile_id=uuid.uuid4().hex,
+                    phone_number=profile['phone_number'],
                     full_name=profile["name"],
                     date_of_birth=date(1990, 1, 1),  # Default date for fake data
                     service_city=profile["location"],
-                    service_area=None,
                     service_description=profile["service_description"],
                 )
                 self.add_profile(fake_profile)
             logger.info("Fake profiles added successfully.")
+            return {"status": "Added"}
+
         except Exception as e:
             logger.exception(f"Failed to add fake clients: {e}")

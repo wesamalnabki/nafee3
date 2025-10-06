@@ -57,6 +57,13 @@ def add_profile(profile: Profile):
     return JSONResponse(response)
 
 
+@app.post("/add_fake_profiles")
+def add_fake_profiles():
+    response = pm.add_fake_profiles(json_path="../data/workers_data.json")
+    return JSONResponse(response)
+
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

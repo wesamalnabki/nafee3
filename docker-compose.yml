@@ -1,0 +1,54 @@
+services:
+  backend:
+    image: backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    networks:
+      - app-network
+#    depends_on:
+#      - qdrant
+#      - cca_platform_api
+#    volumes:
+#      - ./mount_directory/logs/:/app/logs
+#      - ./mount_directory/data/prompts/:/app/data/prompts/
+#      - ./mount_directory/data/raw/:/app/data/raw/
+#      - ./mount_directory/gcp_credentials/:/app/gcp_credentials/
+#      - ./mount_directory/settings/:/app/settings/
+#    logging:
+#      driver: json-file
+#      options:
+#        max-size: "10m"        # Rotate logs after 10MB
+#        max-file: "5"          # Keep at most 5 rotated logs
+
+  frontend:
+    image: frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+#  qdrant:
+#    image: qdrant/qdrant
+#    ports:
+#      - "6333:6333"
+#      - "6334:6334"
+#    volumes:
+#      - "./mount_directory/qdrant_storage:/qdrant/storage:z"
+#    networks:
+#      - app-network
+
+networks:
+  app-network:
+    driver: bridge
